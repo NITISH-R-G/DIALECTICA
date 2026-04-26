@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import base64
 import json
 import time
-from pathlib import Path
 from typing import Generator
 
 import gradio as gr
@@ -285,14 +283,6 @@ CSS = """
 }
 """
 
-ASSETS_DIR = Path(__file__).parent / "assets"
-
-
-def _data_uri_png(filename: str) -> str:
-    p = ASSETS_DIR / filename
-    return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode("ascii")
-
-
 ARENA_HTML = r"""
 <div class="pixel-hero">
   <div class="pixel-title">DIALECTICA ⚔️</div>
@@ -313,11 +303,12 @@ ARENA_HTML = r"""
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
 
-  const ASSET_BG = "__BG__";
-  const ASSET_PRO = "__PRO__";
-  const ASSET_CON = "__CON__";
-  const ASSET_JUDGE = "__JUDGE__";
-  const ASSET_BUBBLES = "__BUBBLES__";
+  // Hugging Face Spaces serves repo files at /file=<path>
+  const ASSET_BG = "/file=assets/bg_courtroom.png";
+  const ASSET_PRO = "/file=assets/sprites_pro.png";
+  const ASSET_CON = "/file=assets/sprites_con.png";
+  const ASSET_JUDGE = "/file=assets/sprites_judge.png";
+  const ASSET_BUBBLES = "/file=assets/ui_bubbles.png";
 
   const PRO = { accent: '#3B82F6', name: 'PRO' };
   const CON = { accent: '#EF4444', name: 'CON' };
@@ -373,6 +364,8 @@ ARENA_HTML = r"""
   ]).then(([bg,pro,con,judge,bubbles]) => {
     imgBg = bg; imgPro = pro; imgCon = con; imgJudge = judge; imgBubbles = bubbles;
     assetsReady = true;
+  }).catch(() => {
+    assetsReady = false;
   });
 
   function drawFrame(sheet, frameIndex, dx, dy, scale){
@@ -407,8 +400,13 @@ ARENA_HTML = r"""
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
     } else {
+      // Fallback minimal scene (so canvas never looks "broken")
       ctx.fillStyle = '#0b0b0c';
       ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      ctx.fillRect(0, 280, canvas.width, 140);
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(40, 265, canvas.width-80, 90);
     }
   }
 
@@ -506,8 +504,10 @@ ARENA_HTML = r"""
     const conMood = state.speaker === 'con' ? 'speaking' : (state.speaker === 'pro' ? 'react' : 'idle');
 
     drawJudge();
-    drawDebaterSprite(imgPro, 280, 314, proMood);
-    drawDebaterSprite(imgCon, 700, 314, conMood);
+    if (assetsReady){
+      drawDebaterSprite(imgPro, 280, 314, proMood);
+      drawDebaterSprite(imgCon, 700, 314, conMood);
+    }
 
     // speech bubble
     if (state.speaker === 'pro') drawSpeechBubble(true, state.proLine);
@@ -565,14 +565,6 @@ ARENA_HTML = r"""
 })();
 </script>
 """
-
-ARENA_HTML = (
-    ARENA_HTML.replace("__BG__", _data_uri_png("bg_courtroom.png"))
-    .replace("__PRO__", _data_uri_png("sprites_pro.png"))
-    .replace("__CON__", _data_uri_png("sprites_con.png"))
-    .replace("__JUDGE__", _data_uri_png("sprites_judge.png"))
-    .replace("__BUBBLES__", _data_uri_png("ui_bubbles.png"))
-)
 
 
 with gr.Blocks(title="DIALECTICA", css=CSS, theme=gr.themes.Base()) as demo:
