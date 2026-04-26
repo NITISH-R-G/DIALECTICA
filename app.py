@@ -303,13 +303,15 @@ const canvas = element.querySelector('#arena');
 if (!canvas) return;
 const ctx = canvas.getContext('2d');
 
-// Build absolute URLs to avoid any base-path issues.
-const ORIGIN = window.location.origin;
-const ASSET_BG = `${ORIGIN}/file=assets/bg_courtroom.png`;
-const ASSET_PRO = `${ORIGIN}/file=assets/sprites_pro.png`;
-const ASSET_CON = `${ORIGIN}/file=assets/sprites_con.png`;
-const ASSET_JUDGE = `${ORIGIN}/file=assets/sprites_judge.png`;
-const ASSET_BUBBLES = `${ORIGIN}/file=assets/ui_bubbles.png`;
+// IMPORTANT:
+// In HF Spaces, repo binaries may be stored via Xet/LFS and not exist as plain
+// files in the container FS. The safest way is to fetch via Hub "resolve" URLs.
+const HUB_BASE = "https://huggingface.co/spaces/NITISHRG15102007/DIALECTICA/resolve/main/assets";
+const ASSET_BG = `${HUB_BASE}/bg_courtroom.png`;
+const ASSET_PRO = `${HUB_BASE}/sprites_pro.png`;
+const ASSET_CON = `${HUB_BASE}/sprites_con.png`;
+const ASSET_JUDGE = `${HUB_BASE}/sprites_judge.png`;
+const ASSET_BUBBLES = `${HUB_BASE}/ui_bubbles.png`;
 
 const PRO = { accent: '#3B82F6', name: 'PRO' };
 const CON = { accent: '#EF4444', name: 'CON' };
@@ -336,6 +338,7 @@ function loadImage(src){
     img.onerror = () => reject(new Error('Failed to load '+src));
     img.decoding = "async";
     img.loading = "eager";
+    img.crossOrigin = "anonymous";
     img.src = src;
   });
 }
