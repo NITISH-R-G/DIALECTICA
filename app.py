@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import base64
 import json
 import time
+from pathlib import Path
 from typing import Generator
 
 import gradio as gr
@@ -283,6 +285,13 @@ CSS = """
 }
 """
 
+ASSETS_DIR = Path(__file__).parent / "assets"
+
+
+def _data_uri_png(filename: str) -> str:
+    p = ASSETS_DIR / filename
+    return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode("ascii")
+
 
 ARENA_HTML = r"""
 <div class="pixel-hero">
@@ -303,6 +312,12 @@ ARENA_HTML = r"""
   const canvas = document.getElementById('arena');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
+
+  const ASSET_BG = "__BG__";
+  const ASSET_PRO = "__PRO__";
+  const ASSET_CON = "__CON__";
+  const ASSET_JUDGE = "__JUDGE__";
+  const ASSET_BUBBLES = "__BUBBLES__";
 
   const PRO = { accent: '#3B82F6', name: 'PRO' };
   const CON = { accent: '#EF4444', name: 'CON' };
@@ -330,6 +345,53 @@ ARENA_HTML = r"""
 
   function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
 
+  function loadImage(src){
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.src = src;
+    });
+  }
+
+  const SPR = { w: 64, h: 64, cols: 4 };
+  const ANIM = {
+    idle:    { start: 0,  count: 4,  fps: 6 },
+    thinking:{ start: 4,  count: 4,  fps: 6 },
+    speaking:{ start: 8,  count: 4,  fps: 10 },
+    react:   { start: 12, count: 4,  fps: 8 }
+  };
+
+  let imgBg=null, imgPro=null, imgCon=null, imgJudge=null, imgBubbles=null;
+  let assetsReady = false;
+
+  Promise.all([
+    loadImage(ASSET_BG),
+    loadImage(ASSET_PRO),
+    loadImage(ASSET_CON),
+    loadImage(ASSET_JUDGE),
+    loadImage(ASSET_BUBBLES),
+  ]).then(([bg,pro,con,judge,bubbles]) => {
+    imgBg = bg; imgPro = pro; imgCon = con; imgJudge = judge; imgBubbles = bubbles;
+    assetsReady = true;
+  });
+
+  function drawFrame(sheet, frameIndex, dx, dy, scale){
+    const col = frameIndex % SPR.cols;
+    const row = Math.floor(frameIndex / SPR.cols);
+    const sx = col * SPR.w;
+    const sy = row * SPR.h;
+    const dw = SPR.w * scale;
+    const dh = SPR.h * scale;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(sheet, sx, sy, SPR.w, SPR.h, dx, dy, dw, dh);
+  }
+
+  function animFrame(animName, t){
+    const a = ANIM[animName] || ANIM.idle;
+    const idx = Math.floor(t * a.fps) % a.count;
+    return a.start + idx;
+  }
+
   function drawPixelRect(x,y,w,h,fill,stroke){
     ctx.fillStyle = fill;
     ctx.fillRect(x,y,w,h);
@@ -341,64 +403,30 @@ ARENA_HTML = r"""
   }
 
   function drawHall(){
-    // background
-    ctx.fillStyle = '#0b0b0c';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    // audience silhouettes
-    ctx.fillStyle = '#0f0f12';
-    for (let i=0;i<70;i++){
-      const x = (i*15) % canvas.width;
-      const y = 240 + Math.floor(i/70*0);
-      const h = 22 + (i%7);
-      ctx.fillRect(x, 250 + (i%3)*3, 10, h);
+    if (assetsReady && imgBg){
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = '#0b0b0c';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
     }
-
-    // stage platform
-    drawPixelRect(0, 300, canvas.width, 120, '#0f0f10', null);
-    drawPixelRect(40, 285, canvas.width-80, 85, '#121216', 'rgba(255,255,255,0.08)');
-
-    // lights
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    ctx.beginPath();
-    ctx.ellipse(260, 120, 220, 150, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(720, 120, 220, 150, 0, 0, Math.PI*2);
-    ctx.fill();
   }
 
-  function drawPodium(x, accent){
-    drawPixelRect(x-70, 250, 140, 110, '#15151b', 'rgba(255,255,255,0.10)');
-    drawPixelRect(x-70, 250, 140, 6, accent, null);
-    // mic
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillRect(x+28, 238, 4, 18);
-    ctx.fillRect(x+20, 235, 18, 4);
+  function drawDebaterSprite(sheet, x, y, mood){
+    if (!assetsReady || !sheet) return;
+    const frame = animFrame(mood, state.animT);
+    const scale = 2.0;
+    drawFrame(sheet, frame, Math.floor(x - (SPR.w*scale)/2), Math.floor(y - (SPR.h*scale)), scale);
   }
 
-  function drawDebater(x, baseY, side, mood){
-    // simple generated pixel-sprite style (no external assets)
-    const accent = side.accent;
-    const bob = Math.sin(state.animT*2 + (side===PRO?0:1.2)) * 2;
-    const speak = (mood === 'speaking') ? (Math.sin(state.animT*14) * 2) : 0;
-    const think = (mood === 'thinking') ? (Math.sin(state.animT*6) * 1) : 0;
-    const react = (mood === 'react') ? (Math.sin(state.animT*10) * 3) : 0;
-
-    const y = baseY + bob + speak + think + react;
-
-    // body
-    drawPixelRect(x-26, y-56, 52, 56, '#1a1a22', 'rgba(255,255,255,0.10)');
-    drawPixelRect(x-26, y-56, 52, 4, accent, null);
-    // head
-    drawPixelRect(x-18, y-84, 36, 28, '#1f1f2a', 'rgba(255,255,255,0.10)');
-    // eyes
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillRect(x-10, y-72, 4, 4);
-    ctx.fillRect(x+6, y-72, 4, 4);
-    // mouth
-    ctx.fillStyle = (mood==='speaking') ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.35)';
-    ctx.fillRect(x-4, y-64, 8, 3);
+  function drawJudge(){
+    if (!assetsReady || !imgJudge) return;
+    const mood = (state.verdict && state.speaker === 'none') ? 'speaking' : 'idle';
+    const frame = animFrame(mood, state.animT);
+    const scale = 2.1;
+    const x = canvas.width/2;
+    const y = 150;
+    drawFrame(imgJudge, frame, Math.floor(x - (SPR.w*scale)/2), Math.floor(y - (SPR.h*scale)/2), scale);
   }
 
   function drawSpeechBubble(side, text){
@@ -408,13 +436,19 @@ ARENA_HTML = r"""
     const by = 70;
     const bw = 340;
     const bh = 120;
-    drawPixelRect(bx, by, bw, bh, 'rgba(0,0,0,0.50)', 'rgba(255,255,255,0.14)');
-    // tail
-    ctx.fillStyle = 'rgba(0,0,0,0.50)';
-    ctx.fillRect(left ? bx+38 : bx+bw-58, by+bh-10, 20, 20);
-    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(left ? bx+39 : bx+bw-57, by+bh-9, 18, 18);
+    if (assetsReady && imgBubbles){
+      ctx.imageSmoothingEnabled = false;
+      // middle tile (64,64) size 64x64 stretched
+      ctx.drawImage(imgBubbles, 64, 64, 64, 64, bx, by, bw, bh);
+      // tails: pick two bubble-tail tiles
+      if (left){
+        ctx.drawImage(imgBubbles, 64, 128, 64, 64, bx+42, by+bh-20, 46, 46);
+      } else {
+        ctx.drawImage(imgBubbles, 128, 128, 64, 64, bx+bw-88, by+bh-20, 46, 46);
+      }
+    } else {
+      drawPixelRect(bx, by, bw, bh, 'rgba(0,0,0,0.50)', 'rgba(255,255,255,0.14)');
+    }
 
     // pixel text (drawn on canvas)
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
@@ -468,15 +502,12 @@ ARENA_HTML = r"""
     state.animT += 1/60;
     drawHall();
 
-    // podiums + debaters
-    drawPodium(250, PRO.accent);
-    drawPodium(730, CON.accent);
-
     const proMood = state.speaker === 'pro' ? 'speaking' : (state.speaker === 'con' ? 'react' : 'idle');
     const conMood = state.speaker === 'con' ? 'speaking' : (state.speaker === 'pro' ? 'react' : 'idle');
 
-    drawDebater(250, 278, PRO, proMood);
-    drawDebater(730, 278, CON, conMood);
+    drawJudge();
+    drawDebaterSprite(imgPro, 280, 314, proMood);
+    drawDebaterSprite(imgCon, 700, 314, conMood);
 
     // speech bubble
     if (state.speaker === 'pro') drawSpeechBubble(true, state.proLine);
@@ -534,6 +565,14 @@ ARENA_HTML = r"""
 })();
 </script>
 """
+
+ARENA_HTML = (
+    ARENA_HTML.replace("__BG__", _data_uri_png("bg_courtroom.png"))
+    .replace("__PRO__", _data_uri_png("sprites_pro.png"))
+    .replace("__CON__", _data_uri_png("sprites_con.png"))
+    .replace("__JUDGE__", _data_uri_png("sprites_judge.png"))
+    .replace("__BUBBLES__", _data_uri_png("ui_bubbles.png"))
+)
 
 
 with gr.Blocks(title="DIALECTICA", css=CSS, theme=gr.themes.Base()) as demo:
