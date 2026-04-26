@@ -296,279 +296,259 @@ ARENA_HTML = r"""
     <div id="hudStat" class="stat">Round 1/5 · Momentum 0</div>
   </div>
 </div>
+"""
 
-<script>
-(() => {
-  const canvas = document.getElementById('arena');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
+ARENA_JS = r"""
+const canvas = element.querySelector('#arena');
+if (!canvas) return;
+const ctx = canvas.getContext('2d');
 
-  // Hugging Face Spaces serves repo files at /file=<path>
-  const ASSET_BG = "/file=assets/bg_courtroom.png";
-  const ASSET_PRO = "/file=assets/sprites_pro.png";
-  const ASSET_CON = "/file=assets/sprites_con.png";
-  const ASSET_JUDGE = "/file=assets/sprites_judge.png";
-  const ASSET_BUBBLES = "/file=assets/ui_bubbles.png";
+const ASSET_BG = "/file=assets/bg_courtroom.png";
+const ASSET_PRO = "/file=assets/sprites_pro.png";
+const ASSET_CON = "/file=assets/sprites_con.png";
+const ASSET_JUDGE = "/file=assets/sprites_judge.png";
+const ASSET_BUBBLES = "/file=assets/ui_bubbles.png";
 
-  const PRO = { accent: '#3B82F6', name: 'PRO' };
-  const CON = { accent: '#EF4444', name: 'CON' };
+const PRO = { accent: '#3B82F6', name: 'PRO' };
+const CON = { accent: '#EF4444', name: 'CON' };
 
-  const state = {
-    topic: 'AI should be open source',
-    round: 1,
-    roundsTotal: 5,
-    proScore: 0,
-    conScore: 0,
-    momentum: 0,
-    speaker: 'none',
-    proLine: '',
-    conLine: '',
-    verdict: '',
-    animT: 0,
-  };
+const state = {
+  topic: 'AI should be open source',
+  round: 1,
+  roundsTotal: 5,
+  proScore: 0,
+  conScore: 0,
+  momentum: 0,
+  speaker: 'none',
+  proLine: '',
+  conLine: '',
+  verdict: '',
+  animT: 0,
+};
 
-  const fx = {
-    bubbleT: 0,
-    proMood: 'idle',
-    conMood: 'idle',
-    pop: 0
-  };
-
-  function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
-
-  function loadImage(src){
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.src = src;
-    });
-  }
-
-  const SPR = { w: 64, h: 64, cols: 4 };
-  const ANIM = {
-    idle:    { start: 0,  count: 4,  fps: 6 },
-    thinking:{ start: 4,  count: 4,  fps: 6 },
-    speaking:{ start: 8,  count: 4,  fps: 10 },
-    react:   { start: 12, count: 4,  fps: 8 }
-  };
-
-  let imgBg=null, imgPro=null, imgCon=null, imgJudge=null, imgBubbles=null;
-  let assetsReady = false;
-
-  Promise.all([
-    loadImage(ASSET_BG),
-    loadImage(ASSET_PRO),
-    loadImage(ASSET_CON),
-    loadImage(ASSET_JUDGE),
-    loadImage(ASSET_BUBBLES),
-  ]).then(([bg,pro,con,judge,bubbles]) => {
-    imgBg = bg; imgPro = pro; imgCon = con; imgJudge = judge; imgBubbles = bubbles;
-    assetsReady = true;
-  }).catch(() => {
-    assetsReady = false;
+function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
+function loadImage(src){
+  return new Promise((resolve,reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Failed to load '+src));
+    img.src = src;
   });
+}
 
-  function drawFrame(sheet, frameIndex, dx, dy, scale){
-    const col = frameIndex % SPR.cols;
-    const row = Math.floor(frameIndex / SPR.cols);
-    const sx = col * SPR.w;
-    const sy = row * SPR.h;
-    const dw = SPR.w * scale;
-    const dh = SPR.h * scale;
+const SPR = { w: 64, h: 64, cols: 4 };
+const ANIM = {
+  idle:    { start: 0,  count: 4,  fps: 6 },
+  thinking:{ start: 4,  count: 4,  fps: 6 },
+  speaking:{ start: 8,  count: 4,  fps: 10 },
+  react:   { start: 12, count: 4,  fps: 8 }
+};
+
+let imgBg=null, imgPro=null, imgCon=null, imgJudge=null, imgBubbles=null;
+let assetsReady = false;
+let assetsError = '';
+
+Promise.all([
+  loadImage(ASSET_BG),
+  loadImage(ASSET_PRO),
+  loadImage(ASSET_CON),
+  loadImage(ASSET_JUDGE),
+  loadImage(ASSET_BUBBLES),
+]).then(([bg,pro,con,judge,bubbles]) => {
+  imgBg = bg; imgPro = pro; imgCon = con; imgJudge = judge; imgBubbles = bubbles;
+  assetsReady = true;
+}).catch((e) => {
+  assetsReady = false;
+  assetsError = String(e && e.message ? e.message : e);
+});
+
+function drawFrame(sheet, frameIndex, dx, dy, scale){
+  const col = frameIndex % SPR.cols;
+  const row = Math.floor(frameIndex / SPR.cols);
+  const sx = col * SPR.w;
+  const sy = row * SPR.h;
+  const dw = SPR.w * scale;
+  const dh = SPR.h * scale;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(sheet, sx, sy, SPR.w, SPR.h, dx, dy, dw, dh);
+}
+
+function animFrame(animName, t){
+  const a = ANIM[animName] || ANIM.idle;
+  const idx = Math.floor(t * a.fps) % a.count;
+  return a.start + idx;
+}
+
+function drawPixelRect(x,y,w,h,fill,stroke){
+  ctx.fillStyle = fill;
+  ctx.fillRect(x,y,w,h);
+  if (stroke){
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x+1,y+1,w-2,h-2);
+  }
+}
+
+function drawHall(){
+  if (assetsReady && imgBg){
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#0b0b0c';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = 'rgba(255,255,255,0.03)';
+    ctx.fillRect(0, 280, canvas.width, 140);
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(40, 265, canvas.width-80, 90);
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.font = '12px \"Press Start 2P\", monospace';
+    ctx.fillText(assetsError ? 'ASSET LOAD FAILED' : 'LOADING ASSETS...', 18, 22);
+  }
+}
+
+function drawDebaterSprite(sheet, x, y, mood){
+  if (!assetsReady || !sheet) return;
+  const frame = animFrame(mood, state.animT);
+  const scale = 2.0;
+  drawFrame(sheet, frame, Math.floor(x - (SPR.w*scale)/2), Math.floor(y - (SPR.h*scale)), scale);
+}
+
+function drawJudge(){
+  if (!assetsReady || !imgJudge) return;
+  const mood = (state.verdict && state.speaker === 'none') ? 'speaking' : 'idle';
+  const frame = animFrame(mood, state.animT);
+  const scale = 2.1;
+  const x = canvas.width/2;
+  const y = 150;
+  drawFrame(imgJudge, frame, Math.floor(x - (SPR.w*scale)/2), Math.floor(y - (SPR.h*scale)/2), scale);
+}
+
+function drawSpeechBubble(side, text){
+  if (!text) return;
+  const left = (side===PRO);
+  const bx = left ? 90 : canvas.width - 430;
+  const by = 70;
+  const bw = 340;
+  const bh = 120;
+  if (assetsReady && imgBubbles){
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(sheet, sx, sy, SPR.w, SPR.h, dx, dy, dw, dh);
-  }
-
-  function animFrame(animName, t){
-    const a = ANIM[animName] || ANIM.idle;
-    const idx = Math.floor(t * a.fps) % a.count;
-    return a.start + idx;
-  }
-
-  function drawPixelRect(x,y,w,h,fill,stroke){
-    ctx.fillStyle = fill;
-    ctx.fillRect(x,y,w,h);
-    if (stroke){
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x+1,y+1,w-2,h-2);
-    }
-  }
-
-  function drawHall(){
-    if (assetsReady && imgBg){
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(imgBubbles, 64, 64, 64, 64, bx, by, bw, bh);
+    if (left){
+      ctx.drawImage(imgBubbles, 64, 128, 64, 64, bx+42, by+bh-20, 46, 46);
     } else {
-      // Fallback minimal scene (so canvas never looks "broken")
-      ctx.fillStyle = '#0b0b0c';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.fillStyle = 'rgba(255,255,255,0.03)';
-      ctx.fillRect(0, 280, canvas.width, 140);
-      ctx.fillStyle = 'rgba(255,255,255,0.04)';
-      ctx.fillRect(40, 265, canvas.width-80, 90);
+      ctx.drawImage(imgBubbles, 128, 128, 64, 64, bx+bw-88, by+bh-20, 46, 46);
     }
+  } else {
+    drawPixelRect(bx, by, bw, bh, 'rgba(0,0,0,0.50)', 'rgba(255,255,255,0.14)');
   }
 
-  function drawDebaterSprite(sheet, x, y, mood){
-    if (!assetsReady || !sheet) return;
-    const frame = animFrame(mood, state.animT);
-    const scale = 2.0;
-    drawFrame(sheet, frame, Math.floor(x - (SPR.w*scale)/2), Math.floor(y - (SPR.h*scale)), scale);
-  }
-
-  function drawJudge(){
-    if (!assetsReady || !imgJudge) return;
-    const mood = (state.verdict && state.speaker === 'none') ? 'speaking' : 'idle';
-    const frame = animFrame(mood, state.animT);
-    const scale = 2.1;
-    const x = canvas.width/2;
-    const y = 150;
-    drawFrame(imgJudge, frame, Math.floor(x - (SPR.w*scale)/2), Math.floor(y - (SPR.h*scale)/2), scale);
-  }
-
-  function drawSpeechBubble(side, text){
-    if (!text) return;
-    const left = (side===PRO);
-    const bx = left ? 90 : canvas.width - 430;
-    const by = 70;
-    const bw = 340;
-    const bh = 120;
-    if (assetsReady && imgBubbles){
-      ctx.imageSmoothingEnabled = false;
-      // middle tile (64,64) size 64x64 stretched
-      ctx.drawImage(imgBubbles, 64, 64, 64, 64, bx, by, bw, bh);
-      // tails: pick two bubble-tail tiles
-      if (left){
-        ctx.drawImage(imgBubbles, 64, 128, 64, 64, bx+42, by+bh-20, 46, 46);
-      } else {
-        ctx.drawImage(imgBubbles, 128, 128, 64, 64, bx+bw-88, by+bh-20, 46, 46);
-      }
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.font = '12px \"Press Start 2P\", monospace';
+  ctx.textBaseline = 'top';
+  const words = text.split(' ');
+  let line = '';
+  let y = by + 14;
+  const maxW = bw - 18;
+  for (const w of words){
+    const test = line ? (line + ' ' + w) : w;
+    if (ctx.measureText(test).width > maxW){
+      ctx.fillText(line, bx+10, y);
+      y += 18;
+      line = w;
+      if (y > by + bh - 26) break;
     } else {
-      drawPixelRect(bx, by, bw, bh, 'rgba(0,0,0,0.50)', 'rgba(255,255,255,0.14)');
+      line = test;
     }
-
-    // pixel text (drawn on canvas)
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.font = '12px "Press Start 2P", monospace';
-    ctx.textBaseline = 'top';
-    const words = text.split(' ');
-    let line = '';
-    let y = by + 14;
-    const maxW = bw - 18;
-    for (const w of words){
-      const test = line ? (line + ' ' + w) : w;
-      if (ctx.measureText(test).width > maxW){
-        ctx.fillText(line, bx+10, y);
-        y += 18;
-        line = w;
-        if (y > by + bh - 26) break;
-      } else {
-        line = test;
-      }
-    }
-    if (line && y <= by + bh - 18) ctx.fillText(line, bx+10, y);
   }
+  if (line && y <= by + bh - 18) ctx.fillText(line, bx+10, y);
+}
 
-  function drawHUD(){
-    // top banner
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fillRect(0, 0, canvas.width, 44);
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.font = '14px "Press Start 2P", monospace';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(state.topic.toUpperCase(), 18, 22);
+function drawHUD(){
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(0, 0, canvas.width, 44);
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.font = '14px \"Press Start 2P\", monospace';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(state.topic || '').toUpperCase(), 18, 22);
 
-    // scores
-    ctx.font = '12px "Press Start 2P", monospace';
-    ctx.fillStyle = PRO.accent;
-    ctx.fillText(`PRO ${state.proScore}`, 18, 66);
-    ctx.fillStyle = CON.accent;
-    ctx.fillText(`CON ${state.conScore}`, canvas.width-180, 66);
+  ctx.font = '12px \"Press Start 2P\", monospace';
+  ctx.fillStyle = PRO.accent;
+  ctx.fillText(`PRO ${state.proScore}`, 18, 66);
+  ctx.fillStyle = CON.accent;
+  ctx.fillText(`CON ${state.conScore}`, canvas.width-180, 66);
 
-    // round center
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillText(`ROUND ${state.round}/${state.roundsTotal}`, canvas.width/2 - 120, 66);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillText(`ROUND ${state.round}/${state.roundsTotal}`, canvas.width/2 - 120, 66);
 
-    // turn indicator
-    const turn = state.speaker === 'pro' ? 'PRO TURN' : (state.speaker === 'con' ? 'CON TURN' : 'READY');
-    ctx.fillStyle = state.speaker === 'pro' ? PRO.accent : (state.speaker === 'con' ? CON.accent : 'rgba(255,255,255,0.7)');
-    ctx.fillText(turn, canvas.width/2 - 78, 92);
+  const turn = state.speaker === 'pro' ? 'PRO TURN' : (state.speaker === 'con' ? 'CON TURN' : 'READY');
+  ctx.fillStyle = state.speaker === 'pro' ? PRO.accent : (state.speaker === 'con' ? CON.accent : 'rgba(255,255,255,0.7)');
+  ctx.fillText(turn, canvas.width/2 - 78, 92);
+}
+
+function setMomentum(v){
+  const el = element.querySelector('#momentumFill');
+  const stat = element.querySelector('#hudStat');
+  if (!el || !stat) return;
+  const pct = clamp(50 + v*6, 8, 92);
+  el.style.width = pct + '%';
+  stat.textContent = `Round ${state.round}/${state.roundsTotal} · Momentum ${v}`;
+}
+
+function hookEventStream(){
+  const candidates = Array.from(document.querySelectorAll('textarea, input')).filter(el => {
+    const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+    return aria.includes('arena_event_stream');
+  });
+  const el = candidates[0];
+  if (!el) { setTimeout(hookEventStream, 500); return; }
+
+  const apply = (raw) => {
+    if (!raw) return;
+    try{
+      const e = JSON.parse(raw);
+      state.topic = e.topic || state.topic;
+      state.round = e.round || state.round;
+      state.roundsTotal = e.roundsTotal || state.roundsTotal;
+      state.proScore = (e.proScore ?? state.proScore);
+      state.conScore = (e.conScore ?? state.conScore);
+      state.momentum = (e.momentum ?? state.momentum);
+      state.speaker = e.speaker || 'none';
+      state.proLine = e.proLine || '';
+      state.conLine = e.conLine || '';
+      state.verdict = e.verdict || '';
+      setMomentum(state.momentum);
+    }catch(err){}
+  };
+
+  apply(el.value);
+  const obs = new MutationObserver(() => apply(el.value));
+  obs.observe(el, { attributes: true, childList: true, subtree: true });
+  el.addEventListener('input', () => apply(el.value));
+}
+
+function tick(){
+  state.animT += 1/60;
+  drawHall();
+  const proMood = state.speaker === 'pro' ? 'speaking' : (state.speaker === 'con' ? 'react' : 'idle');
+  const conMood = state.speaker === 'con' ? 'speaking' : (state.speaker === 'pro' ? 'react' : 'idle');
+  drawJudge();
+  if (assetsReady){
+    drawDebaterSprite(imgPro, 280, 314, proMood);
+    drawDebaterSprite(imgCon, 700, 314, conMood);
   }
+  if (state.speaker === 'pro') drawSpeechBubble(true, state.proLine);
+  if (state.speaker === 'con') drawSpeechBubble(false, state.conLine);
+  drawHUD();
+  requestAnimationFrame(tick);
+}
 
-  function tick(){
-    state.animT += 1/60;
-    drawHall();
-
-    const proMood = state.speaker === 'pro' ? 'speaking' : (state.speaker === 'con' ? 'react' : 'idle');
-    const conMood = state.speaker === 'con' ? 'speaking' : (state.speaker === 'pro' ? 'react' : 'idle');
-
-    drawJudge();
-    if (assetsReady){
-      drawDebaterSprite(imgPro, 280, 314, proMood);
-      drawDebaterSprite(imgCon, 700, 314, conMood);
-    }
-
-    // speech bubble
-    if (state.speaker === 'pro') drawSpeechBubble(true, state.proLine);
-    if (state.speaker === 'con') drawSpeechBubble(false, state.conLine);
-
-    drawHUD();
-
-    requestAnimationFrame(tick);
-  }
-
-  function setMomentum(v){
-    const el = document.getElementById('momentumFill');
-    const stat = document.getElementById('hudStat');
-    if (!el || !stat) return;
-    const pct = clamp(50 + v*6, 8, 92);
-    el.style.width = pct + '%';
-    stat.textContent = `Round ${state.round}/${state.roundsTotal} · Momentum ${v}`;
-  }
-
-  // Listen to Gradio updates: a hidden textbox (JSON event) changes over time.
-  function hookEventStream(){
-    const candidates = Array.from(document.querySelectorAll('textarea, input')).filter(el => {
-      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
-      return aria.includes('arena_event_stream');
-    });
-    const el = candidates[0];
-    if (!el) { setTimeout(hookEventStream, 500); return; }
-
-    const apply = (raw) => {
-      if (!raw) return;
-      try{
-        const e = JSON.parse(raw);
-        state.topic = e.topic || state.topic;
-        state.round = e.round || state.round;
-        state.roundsTotal = e.roundsTotal || state.roundsTotal;
-        state.proScore = e.proScore ?? state.proScore;
-        state.conScore = e.conScore ?? state.conScore;
-        state.momentum = e.momentum ?? state.momentum;
-        state.speaker = e.speaker || 'none';
-        state.proLine = e.proLine || '';
-        state.conLine = e.conLine || '';
-        state.verdict = e.verdict || '';
-        setMomentum(state.momentum);
-      }catch(err){}
-    };
-
-    apply(el.value);
-    const obs = new MutationObserver(() => apply(el.value));
-    obs.observe(el, { attributes: true, childList: true, subtree: true });
-    el.addEventListener('input', () => apply(el.value));
-  }
-
-  hookEventStream();
-  tick();
-})();
-</script>
+hookEventStream();
+tick();
 """
 
 
 with gr.Blocks(title="DIALECTICA", css=CSS, theme=gr.themes.Base()) as demo:
-    gr.HTML(ARENA_HTML)
+    gr.HTML(ARENA_HTML, js_on_load=ARENA_JS)
 
     with gr.Row():
         topic = gr.Dropdown(TOPICS, value=DEFAULT_TOPIC, label="Topic", interactive=True)
