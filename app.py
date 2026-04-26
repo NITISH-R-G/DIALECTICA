@@ -303,11 +303,13 @@ const canvas = element.querySelector('#arena');
 if (!canvas) return;
 const ctx = canvas.getContext('2d');
 
-const ASSET_BG = "/file=assets/bg_courtroom.png";
-const ASSET_PRO = "/file=assets/sprites_pro.png";
-const ASSET_CON = "/file=assets/sprites_con.png";
-const ASSET_JUDGE = "/file=assets/sprites_judge.png";
-const ASSET_BUBBLES = "/file=assets/ui_bubbles.png";
+// Build absolute URLs to avoid any base-path issues.
+const ORIGIN = window.location.origin;
+const ASSET_BG = `${ORIGIN}/file=assets/bg_courtroom.png`;
+const ASSET_PRO = `${ORIGIN}/file=assets/sprites_pro.png`;
+const ASSET_CON = `${ORIGIN}/file=assets/sprites_con.png`;
+const ASSET_JUDGE = `${ORIGIN}/file=assets/sprites_judge.png`;
+const ASSET_BUBBLES = `${ORIGIN}/file=assets/ui_bubbles.png`;
 
 const PRO = { accent: '#3B82F6', name: 'PRO' };
 const CON = { accent: '#EF4444', name: 'CON' };
@@ -332,6 +334,8 @@ function loadImage(src){
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('Failed to load '+src));
+    img.decoding = "async";
+    img.loading = "eager";
     img.src = src;
   });
 }
@@ -347,20 +351,33 @@ const ANIM = {
 let imgBg=null, imgPro=null, imgCon=null, imgJudge=null, imgBubbles=null;
 let assetsReady = false;
 let assetsError = '';
+let assetsTried = 0;
 
-Promise.all([
-  loadImage(ASSET_BG),
-  loadImage(ASSET_PRO),
-  loadImage(ASSET_CON),
-  loadImage(ASSET_JUDGE),
-  loadImage(ASSET_BUBBLES),
-]).then(([bg,pro,con,judge,bubbles]) => {
-  imgBg = bg; imgPro = pro; imgCon = con; imgJudge = judge; imgBubbles = bubbles;
-  assetsReady = true;
-}).catch((e) => {
-  assetsReady = false;
-  assetsError = String(e && e.message ? e.message : e);
-});
+async function loadAllAssets(cacheBust){
+  const bust = cacheBust ? `?v=${Date.now()}` : "";
+  assetsTried += 1;
+  assetsError = "";
+  try{
+    const [bg,pro,con,judge,bubbles] = await Promise.all([
+      loadImage(ASSET_BG + bust),
+      loadImage(ASSET_PRO + bust),
+      loadImage(ASSET_CON + bust),
+      loadImage(ASSET_JUDGE + bust),
+      loadImage(ASSET_BUBBLES + bust),
+    ]);
+    imgBg = bg; imgPro = pro; imgCon = con; imgJudge = judge; imgBubbles = bubbles;
+    assetsReady = true;
+  } catch(e){
+    assetsReady = false;
+    assetsError = String(e && e.message ? e.message : e);
+    // One retry with cache-buster (helps on HF caching/race conditions)
+    if (!cacheBust) {
+      setTimeout(() => loadAllAssets(true), 400);
+    }
+  }
+}
+
+loadAllAssets(false);
 
 function drawFrame(sheet, frameIndex, dx, dy, scale){
   const col = frameIndex % SPR.cols;
@@ -400,9 +417,23 @@ function drawHall(){
     ctx.fillRect(0, 280, canvas.width, 140);
     ctx.fillStyle = 'rgba(255,255,255,0.04)';
     ctx.fillRect(40, 265, canvas.width-80, 90);
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.font = '12px \"Press Start 2P\", monospace';
-    ctx.fillText(assetsError ? 'ASSET LOAD FAILED' : 'LOADING ASSETS...', 18, 22);
+    // Big status overlay so it's obvious what's wrong.
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, canvas.width, 120);
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = '14px \"Press Start 2P\", monospace';
+    ctx.textBaseline = 'top';
+    ctx.fillText(assetsError ? 'ASSET LOAD FAILED' : 'LOADING ASSETS...', 18, 12);
+    ctx.font = '10px \"Press Start 2P\", monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillText(`tries: ${assetsTried}`, 18, 42);
+    if (assetsError){
+      const msg = assetsError.slice(0, 80);
+      ctx.fillText(msg, 18, 62);
+      ctx.fillText('Check: /file=assets/*.png', 18, 82);
+    } else {
+      ctx.fillText('Fetching sprite sheets...', 18, 62);
+    }
   }
 }
 
@@ -535,6 +566,10 @@ function tick(){
   if (assetsReady){
     drawDebaterSprite(imgPro, 280, 314, proMood);
     drawDebaterSprite(imgCon, 700, 314, conMood);
+  } else {
+    // Minimal placeholders so the scene doesn't feel empty.
+    drawPixelRect(220, 290, 120, 70, 'rgba(59,130,246,0.08)', 'rgba(59,130,246,0.35)');
+    drawPixelRect(640, 290, 120, 70, 'rgba(239,68,68,0.08)', 'rgba(239,68,68,0.35)');
   }
   if (state.speaker === 'pro') drawSpeechBubble(true, state.proLine);
   if (state.speaker === 'con') drawSpeechBubble(false, state.conLine);
