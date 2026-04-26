@@ -1,7 +1,7 @@
 spec_version: 1
-name: echo_env
+name: contract_to_compliance
 type: space
 runtime: fastapi
-app: server.app:app
+app: server.contract_app:app
 port: 8000
 
