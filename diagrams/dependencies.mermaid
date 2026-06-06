@@ -1,0 +1,11 @@
+graph LR
+    Project["My Application"]
+    Project --> FastAPI["FastAPI"]
+    style FastAPI fill:#f9f,stroke:#333,stroke-width:2px
+    Project --> OpenEnv["OpenEnv"]
+    style OpenEnv fill:#f9f,stroke:#333,stroke-width:2px
+    Project -.-> openenv_core_core_["openenv-core[core]"]
+    Project -.-> fastapi["fastapi"]
+    Project -.-> pydantic["pydantic"]
+    Project -.-> uvicorn["uvicorn"]
+    Project -.-> requests["requests"]
