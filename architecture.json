@@ -28,16 +28,6 @@
       ],
       "classes": []
     },
-    "server.py": {
-      "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "echo_env.server.app"
-      ],
-      "functions": [],
-      "classes": []
-    },
     "models.py": {
       "imports": [
         "__future__",
@@ -57,9 +47,74 @@
       "functions": [],
       "classes": []
     },
+    "server.py": {
+      "imports": [
+        "__future__",
+        "os",
+        "sys",
+        "echo_env.server.app"
+      ],
+      "functions": [],
+      "classes": []
+    },
+    "server/contract_app.py": {
+      "imports": [
+        "__future__",
+        "os",
+        "sys",
+        "contract_env.server.app"
+      ],
+      "functions": [],
+      "classes": []
+    },
+    "server/app.py": {
+      "imports": [
+        "__future__",
+        "os",
+        "sys",
+        "echo_env.server.app"
+      ],
+      "functions": [],
+      "classes": []
+    },
+    "server/echo_environment.py": {
+      "imports": [
+        "__future__",
+        "os",
+        "sys",
+        "echo_env.server.echo_environment"
+      ],
+      "functions": [],
+      "classes": []
+    },
+    "server/__init__.py": {
+      "imports": [
+        "__future__",
+        "os",
+        "sys",
+        "echo_env.server.echo_environment"
+      ],
+      "functions": [],
+      "classes": []
+    },
     "src/contract_env/__init__.py": {
       "imports": [],
       "functions": [],
+      "classes": []
+    },
+    "src/contract_env/server/app.py": {
+      "imports": [
+        "__future__",
+        "contract_environment",
+        "openenv.core.env_server.http_server",
+        "openenv.core.env_server.mcp_types",
+        "uvicorn",
+        "openenv.core.env_server.http_server",
+        "openenv.core.env_server.mcp_types"
+      ],
+      "functions": [
+        "main"
+      ],
       "classes": []
     },
     "src/contract_env/server/contract_environment.py": {
@@ -97,28 +152,6 @@
         "ContractComplianceEnvironment"
       ]
     },
-    "src/contract_env/server/app.py": {
-      "imports": [
-        "__future__",
-        "contract_environment",
-        "openenv.core.env_server.http_server",
-        "openenv.core.env_server.mcp_types",
-        "uvicorn",
-        "openenv.core.env_server.http_server",
-        "openenv.core.env_server.mcp_types"
-      ],
-      "functions": [
-        "main"
-      ],
-      "classes": []
-    },
-    "src/echo_env/__init__.py": {
-      "imports": [
-        "models"
-      ],
-      "functions": [],
-      "classes": []
-    },
     "src/echo_env/models.py": {
       "imports": [
         "pydantic",
@@ -130,6 +163,13 @@
         "EchoAction",
         "EchoObservation"
       ]
+    },
+    "src/echo_env/__init__.py": {
+      "imports": [
+        "models"
+      ],
+      "functions": [],
+      "classes": []
     },
     "src/echo_env/server/app.py": {
       "imports": [
@@ -175,55 +215,15 @@
       ],
       "functions": [],
       "classes": []
-    },
-    "server/app.py": {
-      "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "echo_env.server.app"
-      ],
-      "functions": [],
-      "classes": []
-    },
-    "server/echo_environment.py": {
-      "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "echo_env.server.echo_environment"
-      ],
-      "functions": [],
-      "classes": []
-    },
-    "server/__init__.py": {
-      "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "echo_env.server.echo_environment"
-      ],
-      "functions": [],
-      "classes": []
-    },
-    "server/contract_app.py": {
-      "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "contract_env.server.app"
-      ],
-      "functions": [],
-      "classes": []
     }
   },
   "entrypoints": [
     "app.py",
     "server.py",
-    "src/contract_env/server/app.py",
-    "src/echo_env/server/app.py",
+    "server/contract_app.py",
     "server/app.py",
-    "server/contract_app.py"
+    "src/contract_env/server/app.py",
+    "src/echo_env/server/app.py"
   ],
   "env_vars": []
 }
