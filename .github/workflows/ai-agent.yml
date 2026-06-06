@@ -16,18 +16,10 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     steps:
       - name: Code Review by AI Agent
-        uses: coderabbitai/openai-pr-reviewer@latest
+        uses: freeedcom/ai-codereviewer@v2.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
-          debug: false
-          review_simple_changes: false
-          review_comment_lgtm: false
-          system_message: |
-            You are an AI Documentation and Architecture Agent.
-            Your role is to:
-            1. Review repository changes for architectural modifications.
-            2. Suggest documentation updates automatically.
-            3. Generate missing documentation strings and architecture summaries.
-            4. Keep all PR summaries focused on how changes affect the overall system graph.
+          exclude: "**/*.json, **/*.md"
+          model: "gpt-4o"
