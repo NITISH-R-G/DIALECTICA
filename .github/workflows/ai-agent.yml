@@ -22,4 +22,3 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
           exclude: "**/*.json, **/*.md"
-          model: "gpt-4o"
