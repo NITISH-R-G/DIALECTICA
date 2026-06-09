@@ -132,11 +132,6 @@ class ContractComplianceEnvironment(MCPEnvironment):
         self._state = State(episode_id=str(uuid4()), step_count=0)
         self._draft: Draft | None = None
 
-    @property
-    def state(self) -> State:
-        """Get the current environment state."""
-        return self._state
-
         @mcp.tool
         def reset_episode(topic: str = "AI should be open source") -> dict:
             """Start a fresh episode with a topic and default compliance rubric."""
@@ -264,6 +259,11 @@ class ContractComplianceEnvironment(MCPEnvironment):
             return payload
 
         super().__init__(mcp)
+
+    @property
+    def state(self) -> State:
+        """Get the current environment state."""
+        return self._state
 
     def reset(
         self,
