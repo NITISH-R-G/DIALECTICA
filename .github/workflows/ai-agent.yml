@@ -15,8 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Code Review by AI Agent
-        uses: freeedcom/ai-codereviewer@v2.0.0
+        uses: freeedcom/ai-codereviewer@v2.7.0
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
