@@ -6,7 +6,6 @@ from typing import Generator
 
 import gradio as gr
 
-
 TOPICS = [
     "AI should be open source",
     "Universal basic income is necessary",
@@ -56,7 +55,9 @@ def _event(
     )
 
 
-def _debate_script(topic: str) -> tuple[list[str], list[str], list[int], list[int], str]:
+def _debate_script(
+    topic: str,
+) -> tuple[list[str], list[str], list[int], list[int], str]:
     # Demo/showcase: always impressive, hardcoded arguments.
     # Default topic gets the "best" lines; others still map to the same script.
     pro = [
@@ -107,20 +108,22 @@ def start_debate(topic: str, mode: str) -> Generator:
         gr.update(value=""),
         gr.update(value=""),
         gr.update(interactive=False),
-        gr.update(value=_event(
-            topic=topic,
-            mode=mode,
-            round_idx=1,
-            rounds_total=rounds_total,
-            pro_line="",
-            con_line="",
-            pro_score=0,
-            con_score=0,
-            momentum=0,
-            speaker="none",
-            timer_s=0.0,
-            verdict="",
-        )),
+        gr.update(
+            value=_event(
+                topic=topic,
+                mode=mode,
+                round_idx=1,
+                rounds_total=rounds_total,
+                pro_line="",
+                con_line="",
+                pro_score=0,
+                con_score=0,
+                momentum=0,
+                speaker="none",
+                timer_s=0.0,
+                verdict="",
+            )
+        ),
     )
 
     for i in range(rounds_total):
@@ -326,6 +329,8 @@ const state = {
   speaker: 'none',
   proLine: '',
   conLine: '',
+  proWords: [],
+  conWords: [],
   verdict: '',
   animT: 0,
 };
@@ -457,7 +462,7 @@ function drawJudge(){
   drawFrame(imgJudge, frame, Math.floor(x - (SPR.w*scale)/2), Math.floor(y - (SPR.h*scale)/2), scale);
 }
 
-function drawSpeechBubble(side, text){
+function drawSpeechBubble(side, text, words){
   if (!text) return;
   const left = (side===PRO);
   const bx = left ? 90 : canvas.width - 430;
@@ -479,11 +484,10 @@ function drawSpeechBubble(side, text){
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
   ctx.font = '12px \"Press Start 2P\", monospace';
   ctx.textBaseline = 'top';
-  const words = text.split(' ');
   let line = '';
   let y = by + 14;
   const maxW = bw - 18;
-  for (const w of words){
+  for (const w of (words || [])){
     const test = line ? (line + ' ' + w) : w;
     if (ctx.measureText(test).width > maxW){
       ctx.fillText(line, bx+10, y);
@@ -547,8 +551,14 @@ function hookEventStream(){
       state.conScore = (e.conScore ?? state.conScore);
       state.momentum = (e.momentum ?? state.momentum);
       state.speaker = e.speaker || 'none';
-      state.proLine = e.proLine || '';
-      state.conLine = e.conLine || '';
+      if (e.proLine !== undefined && state.proLine !== e.proLine) {
+        state.proLine = e.proLine || '';
+        state.proWords = state.proLine.split(' ');
+      }
+      if (e.conLine !== undefined && state.conLine !== e.conLine) {
+        state.conLine = e.conLine || '';
+        state.conWords = state.conLine.split(' ');
+      }
       state.verdict = e.verdict || '';
       setMomentum(state.momentum);
     }catch(err){}
@@ -574,8 +584,8 @@ function tick(){
     drawPixelRect(220, 290, 120, 70, 'rgba(59,130,246,0.08)', 'rgba(59,130,246,0.35)');
     drawPixelRect(640, 290, 120, 70, 'rgba(239,68,68,0.08)', 'rgba(239,68,68,0.35)');
   }
-  if (state.speaker === 'pro') drawSpeechBubble(true, state.proLine);
-  if (state.speaker === 'con') drawSpeechBubble(false, state.conLine);
+  if (state.speaker === 'pro') drawSpeechBubble(true, state.proLine, state.proWords);
+  if (state.speaker === 'con') drawSpeechBubble(false, state.conLine, state.conWords);
   drawHUD();
   requestAnimationFrame(tick);
 }
@@ -589,7 +599,9 @@ with gr.Blocks(title="DIALECTICA", css=CSS, theme=gr.themes.Base()) as demo:
     gr.HTML(ARENA_HTML, js_on_load=ARENA_JS)
 
     with gr.Row():
-        topic = gr.Dropdown(TOPICS, value=DEFAULT_TOPIC, label="Topic", interactive=True)
+        topic = gr.Dropdown(
+            TOPICS, value=DEFAULT_TOPIC, label="Topic", interactive=True
+        )
         mode = gr.Dropdown(
             ["AI vs AI", "Human vs AI"],
             value="AI vs AI",
@@ -617,4 +629,3 @@ with gr.Blocks(title="DIALECTICA", css=CSS, theme=gr.themes.Base()) as demo:
 
 if __name__ == "__main__":
     demo.launch()
-
