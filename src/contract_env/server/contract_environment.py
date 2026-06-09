@@ -36,6 +36,13 @@ class Draft:
     clauses: list[Clause] = field(default_factory=list)
     definitions: dict[str, str] = field(default_factory=dict)
 
+    _req_tuples: list[tuple[str, str]] = field(init=False)
+    _forb_tuples: list[tuple[str, str]] = field(init=False)
+
+    def __post_init__(self):
+        self._req_tuples = [(r, r.lower()) for r in self.requirements]
+        self._forb_tuples = [(p, p.lower()) for p in self.forbidden_phrases]
+
     def to_markdown(self) -> str:
         by_section: dict[str, list[Clause]] = {}
         for c in self.clauses:
@@ -56,39 +63,43 @@ class Draft:
         return "".join(parts).strip() + "\n"
 
 
-def _contains_any(text: str, phrases: list[str]) -> list[str]:
-    t = text.lower()
-    return [p for p in phrases if p.lower() in t]
+def _contains_any(text_lower: str, phrases_tuples: list[tuple[str, str]]) -> list[str]:
+    return [p for p, p_lower in phrases_tuples if p_lower in text_lower]
 
 
-def _coverage_score(draft_md: str, requirements: list[str]) -> tuple[int, list[str]]:
+def _coverage_score(
+    text_lower: str, requirements_tuples: list[tuple[str, str]]
+) -> tuple[int, list[str]]:
     missing: list[str] = []
-    t = draft_md.lower()
-    for r in requirements:
-        if r.lower() not in t:
+    for r, r_lower in requirements_tuples:
+        if r_lower not in text_lower:
             missing.append(r)
-    covered = len(requirements) - len(missing)
+    covered = len(requirements_tuples) - len(missing)
     return covered, missing
 
 
-def _contradiction_checks(draft_md: str) -> list[str]:
+def _contradiction_checks(text_lower: str) -> list[str]:
     # Lightweight, objective checks (expand later):
     # - retention days must be consistent with constraint marker if present.
     issues: list[str] = []
-    t = draft_md.lower()
-    if "retain" in t and "indefinitely" in t:
-        issues.append("Mentions retention and 'indefinitely' (potentially contradictory).")
-    if "we will never" in t and "may" in t and "share" in t:
-        issues.append("Contains 'we will never' and 'may share' (potential contradiction).")
+    if "retain" in text_lower and "indefinitely" in text_lower:
+        issues.append(
+            "Mentions retention and 'indefinitely' (potentially contradictory)."
+        )
+    if "we will never" in text_lower and "may" in text_lower and "share" in text_lower:
+        issues.append(
+            "Contains 'we will never' and 'may share' (potential contradiction)."
+        )
     return issues
 
 
 def _compute_reward(draft: Draft) -> dict[str, Any]:
     md = draft.to_markdown()
+    md_lower = md.lower()
 
-    covered, missing = _coverage_score(md, draft.requirements)
-    forbidden_hits = _contains_any(md, draft.forbidden_phrases)
-    contradictions = _contradiction_checks(md)
+    covered, missing = _coverage_score(md_lower, draft._req_tuples)
+    forbidden_hits = _contains_any(md_lower, draft._forb_tuples)
+    contradictions = _contradiction_checks(md_lower)
 
     # Reward components (simple but informative; RLVR-friendly)
     r_coverage = covered / max(1, len(draft.requirements))  # 0..1
@@ -189,7 +200,9 @@ class ContractComplianceEnvironment(MCPEnvironment):
             if self._draft is None:
                 return {"error": "Call reset_episode first."}
             cid = f"c_{uuid4().hex[:8]}"
-            self._draft.clauses.append(Clause(id=cid, section=section.strip(), text=text.strip()))
+            self._draft.clauses.append(
+                Clause(id=cid, section=section.strip(), text=text.strip())
+            )
             self._state.step_count += 1
             payload = _compute_reward(self._draft)
             payload["event"] = "add_clause"
@@ -284,4 +297,3 @@ class ContractComplianceEnvironment(MCPEnvironment):
                 "Use ListToolsAction or CallToolAction for MCP interactions."
             },
         )
-

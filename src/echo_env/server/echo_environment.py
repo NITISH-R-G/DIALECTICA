@@ -195,4 +195,3 @@ class EchoEnvironment(MCPEnvironment):
         """Get the current environment state."""
 
         return self._state
-
