@@ -21,6 +21,7 @@ dependencies = [
   "uvicorn>=0.24.0",
   "requests>=2.31.0",
   # No additional environment-specific dependencies needed for echo_env
+  "gradio>=6.17.3",
 ]
 
 [project.optional-dependencies]
@@ -41,3 +42,6 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+
+[tool.pytest.ini_options]
+pythonpath = "."
