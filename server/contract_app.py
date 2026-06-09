@@ -10,5 +10,5 @@ _SRC = os.path.join(_ROOT, "src")
 if os.path.isdir(_SRC) and _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from contract_env.server.app import app, main  # noqa: E402,F401
+from contract_env.server.app import app  # noqa: E402,F401
 
