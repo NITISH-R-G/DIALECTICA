@@ -110,7 +110,7 @@ def _calculate_scores(
     return current_pro, current_con, sum(reward_points)
 
 
-def _create_ui_update(
+def _create_ui_update(  # NOSONAR
     topic: str, interactive: bool, event_str: str, include_interactive: bool = True
 ) -> tuple:
     empty_update = gr.update(value="")
