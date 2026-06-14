@@ -113,20 +113,21 @@ def _calculate_scores(
 def _create_ui_update(
     topic: str, interactive: bool, event_str: str, include_interactive: bool = True
 ) -> tuple:
+    empty_update = gr.update(value="")
     if include_interactive:
         return (
             gr.update(value=topic),
             gr.update(interactive=interactive),
-            gr.update(value=""),
-            gr.update(value=""),
+            empty_update,
+            empty_update,
             gr.update(interactive=False),
             gr.update(value=event_str),
         )
     return (
         gr.update(value=topic),
         gr.update(interactive=interactive),
-        gr.update(value=""),
-        gr.update(value=""),
+        empty_update,
+        empty_update,
         gr.update(value=event_str),
     )
 
