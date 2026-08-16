@@ -13,15 +13,6 @@
     ]
   },
   "modules": {
-    "sitecustomize.py": {
-      "imports": [
-        "__future__",
-        "os",
-        "sys"
-      ],
-      "functions": [],
-      "classes": []
-    },
     "app.py": {
       "imports": [
         "__future__",
@@ -37,12 +28,11 @@
       ],
       "classes": []
     },
-    "server.py": {
+    "sitecustomize.py": {
       "imports": [
         "__future__",
         "os",
-        "sys",
-        "echo_env.server.app"
+        "sys"
       ],
       "functions": [],
       "classes": []
@@ -57,7 +47,7 @@
       "functions": [],
       "classes": []
     },
-    "server/app.py": {
+    "server.py": {
       "imports": [
         "__future__",
         "os",
@@ -67,35 +57,69 @@
       "functions": [],
       "classes": []
     },
-    "server/echo_environment.py": {
+    "src/echo_env/__init__.py": {
       "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "echo_env.server.echo_environment"
+        "models"
       ],
       "functions": [],
       "classes": []
     },
-    "server/__init__.py": {
+    "src/echo_env/models.py": {
       "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "echo_env.server.echo_environment"
+        "pydantic",
+        "openenv.core.env_server.types",
+        "openenv.core.env_server.types"
+      ],
+      "functions": [],
+      "classes": [
+        "EchoAction",
+        "EchoObservation"
+      ]
+    },
+    "src/echo_env/server/__init__.py": {
+      "imports": [
+        "echo_environment"
       ],
       "functions": [],
       "classes": []
     },
-    "server/contract_app.py": {
+    "src/echo_env/server/app.py": {
       "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "contract_env.server.app"
+        "openenv.core.env_server.http_server",
+        "openenv.core.env_server.mcp_types",
+        "echo_environment",
+        "uvicorn",
+        "openenv.core.env_server.http_server",
+        "openenv.core.env_server.mcp_types",
+        "echo_env.server.echo_environment"
       ],
-      "functions": [],
+      "functions": [
+        "main"
+      ],
       "classes": []
+    },
+    "src/echo_env/server/echo_environment.py": {
+      "imports": [
+        "typing",
+        "uuid",
+        "fastmcp",
+        "openenv.core.env_server.mcp_environment",
+        "openenv.core.env_server.types",
+        "openenv.core.env_server.mcp_environment",
+        "openenv.core.env_server.types"
+      ],
+      "functions": [
+        "__init__",
+        "reset",
+        "_step_impl",
+        "step",
+        "state",
+        "echo_message",
+        "echo_with_length"
+      ],
+      "classes": [
+        "EchoEnvironment"
+      ]
     },
     "src/contract_env/__init__.py": {
       "imports": [],
@@ -152,66 +176,42 @@
         "ContractComplianceEnvironment"
       ]
     },
-    "src/echo_env/__init__.py": {
+    "server/__init__.py": {
       "imports": [
-        "models"
-      ],
-      "functions": [],
-      "classes": []
-    },
-    "src/echo_env/models.py": {
-      "imports": [
-        "pydantic",
-        "openenv.core.env_server.types",
-        "openenv.core.env_server.types"
-      ],
-      "functions": [],
-      "classes": [
-        "EchoAction",
-        "EchoObservation"
-      ]
-    },
-    "src/echo_env/server/app.py": {
-      "imports": [
-        "openenv.core.env_server.http_server",
-        "openenv.core.env_server.mcp_types",
-        "echo_environment",
-        "uvicorn",
-        "openenv.core.env_server.http_server",
-        "openenv.core.env_server.mcp_types",
+        "__future__",
+        "os",
+        "sys",
         "echo_env.server.echo_environment"
       ],
-      "functions": [
-        "main"
-      ],
+      "functions": [],
       "classes": []
     },
-    "src/echo_env/server/echo_environment.py": {
+    "server/app.py": {
       "imports": [
-        "typing",
-        "uuid",
-        "fastmcp",
-        "openenv.core.env_server.mcp_environment",
-        "openenv.core.env_server.types",
-        "openenv.core.env_server.mcp_environment",
-        "openenv.core.env_server.types"
+        "__future__",
+        "os",
+        "sys",
+        "echo_env.server.app"
       ],
-      "functions": [
-        "__init__",
-        "reset",
-        "_step_impl",
-        "step",
-        "state",
-        "echo_message",
-        "echo_with_length"
-      ],
-      "classes": [
-        "EchoEnvironment"
-      ]
+      "functions": [],
+      "classes": []
     },
-    "src/echo_env/server/__init__.py": {
+    "server/contract_app.py": {
       "imports": [
-        "echo_environment"
+        "__future__",
+        "os",
+        "sys",
+        "contract_env.server.app"
+      ],
+      "functions": [],
+      "classes": []
+    },
+    "server/echo_environment.py": {
+      "imports": [
+        "__future__",
+        "os",
+        "sys",
+        "echo_env.server.echo_environment"
       ],
       "functions": [],
       "classes": []
@@ -220,10 +220,10 @@
   "entrypoints": [
     "app.py",
     "server.py",
-    "server/app.py",
-    "server/contract_app.py",
+    "src/echo_env/server/app.py",
     "src/contract_env/server/app.py",
-    "src/echo_env/server/app.py"
+    "server/app.py",
+    "server/contract_app.py"
   ],
   "env_vars": []
 }
