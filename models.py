@@ -16,7 +16,6 @@ _SRC = os.path.join(_ROOT, "src")
 if os.path.isdir(_SRC) and _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from echo_env.models import EchoAction, EchoObservation  # noqa: E402
+from echo_env.models import EchoAction, EchoObservation  # noqa: E402, F401
 
 __all__ = ["EchoAction", "EchoObservation"]
-
