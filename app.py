@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Generator
+import asyncio
+from typing import Generator, AsyncGenerator  # noqa: F401
 
 import gradio as gr
 
@@ -89,7 +90,7 @@ def _debate_script(topic: str) -> tuple[list[str], list[str], list[int], list[in
     return pro, con, pro_delta, con_delta, verdict
 
 
-def start_debate(topic: str, mode: str) -> Generator:
+async def start_debate(topic: str, mode: str) -> AsyncGenerator:
     topic = topic or DEFAULT_TOPIC
     mode = mode or "AI vs AI"
     pro_lines, con_lines, pro_delta, con_delta, verdict = _debate_script(topic)
@@ -125,7 +126,7 @@ def start_debate(topic: str, mode: str) -> Generator:
 
     for i in range(rounds_total):
         # PRO speaks
-        time.sleep(0.3)
+        await asyncio.sleep(0.3)
         pro_score += pro_delta[i]
         con_score += 0
         reward_points.append(pro_delta[i] - 0)
@@ -153,7 +154,7 @@ def start_debate(topic: str, mode: str) -> Generator:
         )
 
         # CON speaks
-        time.sleep(0.3)
+        await asyncio.sleep(0.3)
         con_score += con_delta[i]
         reward_points.append(0 - con_delta[i])
         momentum = sum(reward_points)
@@ -179,7 +180,7 @@ def start_debate(topic: str, mode: str) -> Generator:
             ),
         )
 
-    time.sleep(0.3)
+    await asyncio.sleep(0.3)
     yield (
         gr.update(value=topic),
         gr.update(interactive=True),
