@@ -132,133 +132,134 @@ class ContractComplianceEnvironment(MCPEnvironment):
         self._state = State(episode_id=str(uuid4()), step_count=0)
         self._draft: Draft | None = None
 
-        @mcp.tool
-        def reset_episode(topic: str = "AI should be open source") -> dict:
-            """Start a fresh episode with a topic and default compliance rubric."""
-            self._state = State(episode_id=str(uuid4()), step_count=0)
-
-            # Demo rubric (expand to GDPR/CCPA + org constraints later)
-            requirements = [
-                "purpose limitation",
-                "data minimization",
-                "lawful basis",
-                "user consent",
-                "data retention",
-                "access & deletion request",
-                "security safeguards",
-                "third-party sharing disclosure",
-            ]
-            forbidden_phrases = [
-                "we sell your data",
-                "no refunds",
-                "we are not responsible",
-                "indefinitely",
-                "without consent",
-            ]
-            numeric_constraints = {"retention_days_max": 30}
-
-            self._draft = Draft(
-                topic=topic,
-                requirements=requirements,
-                forbidden_phrases=forbidden_phrases,
-                numeric_constraints=numeric_constraints,
-                clauses=[],
-                definitions={},
-            )
-
-            payload = _compute_reward(self._draft)
-            payload["event"] = "reset"
-            payload["episode_id"] = self._state.episode_id
-            payload["step_count"] = self._state.step_count
-            return payload
-
-        @mcp.tool
-        def get_state() -> dict:
-            """Return current draft + audit + reward breakdown."""
-            if self._draft is None:
-                return {"error": "Call reset_episode first."}
-            payload = _compute_reward(self._draft)
-            payload["event"] = "state"
-            payload["episode_id"] = self._state.episode_id
-            payload["step_count"] = self._state.step_count
-            return payload
-
-        @mcp.tool
-        def add_clause(section: str, text: str) -> dict:
-            """Policy Drafter: add a clause in a section."""
-            if self._draft is None:
-                return {"error": "Call reset_episode first."}
-            cid = f"c_{uuid4().hex[:8]}"
-            self._draft.clauses.append(Clause(id=cid, section=section.strip(), text=text.strip()))
-            self._state.step_count += 1
-            payload = _compute_reward(self._draft)
-            payload["event"] = "add_clause"
-            payload["clause_id"] = cid
-            payload["episode_id"] = self._state.episode_id
-            payload["step_count"] = self._state.step_count
-            return payload
-
-        @mcp.tool
-        def edit_clause(clause_id: str, new_text: str) -> dict:
-            """Policy Drafter: edit an existing clause by id."""
-            if self._draft is None:
-                return {"error": "Call reset_episode first."}
-            for c in self._draft.clauses:
-                if c.id == clause_id:
-                    c.text = new_text.strip()
-                    self._state.step_count += 1
-                    payload = _compute_reward(self._draft)
-                    payload["event"] = "edit_clause"
-                    payload["clause_id"] = clause_id
-                    payload["episode_id"] = self._state.episode_id
-                    payload["step_count"] = self._state.step_count
-                    return payload
-            return {"error": f"Unknown clause_id: {clause_id}"}
-
-        @mcp.tool
-        def delete_clause(clause_id: str) -> dict:
-            """Policy Drafter: delete a clause by id."""
-            if self._draft is None:
-                return {"error": "Call reset_episode first."}
-            before = len(self._draft.clauses)
-            self._draft.clauses = [c for c in self._draft.clauses if c.id != clause_id]
-            if len(self._draft.clauses) == before:
-                return {"error": f"Unknown clause_id: {clause_id}"}
-            self._state.step_count += 1
-            payload = _compute_reward(self._draft)
-            payload["event"] = "delete_clause"
-            payload["clause_id"] = clause_id
-            payload["episode_id"] = self._state.episode_id
-            payload["step_count"] = self._state.step_count
-            return payload
-
-        @mcp.tool
-        def add_definition(term: str, definition: str) -> dict:
-            """Policy Drafter: add/overwrite a definition."""
-            if self._draft is None:
-                return {"error": "Call reset_episode first."}
-            self._draft.definitions[term.strip()] = definition.strip()
-            self._state.step_count += 1
-            payload = _compute_reward(self._draft)
-            payload["event"] = "add_definition"
-            payload["episode_id"] = self._state.episode_id
-            payload["step_count"] = self._state.step_count
-            return payload
-
-        @mcp.tool
-        def redteam_probe(question: str) -> dict:
-            """Red Team: add an adversarial probe (doesn't mutate draft, but scores robustness later)."""
-            if self._draft is None:
-                return {"error": "Call reset_episode first."}
-            # For v1 we simply surface the probe in the audit payload.
-            payload = _compute_reward(self._draft)
-            payload["event"] = "redteam_probe"
-            payload["probe"] = question.strip()
-            payload["episode_id"] = self._state.episode_id
-            payload["step_count"] = self._state.step_count
-            return payload
+        mcp.tool(self._reset_episode, name="reset_episode")
+        mcp.tool(self._get_state, name="get_state")
+        mcp.tool(self._add_clause, name="add_clause")
+        mcp.tool(self._edit_clause, name="edit_clause")
+        mcp.tool(self._delete_clause, name="delete_clause")
+        mcp.tool(self._add_definition, name="add_definition")
+        mcp.tool(self._redteam_probe, name="redteam_probe")
 
         super().__init__(mcp)
+
+    def _reset_episode(self, topic: str = "AI should be open source") -> dict:
+        """Start a fresh episode with a topic and default compliance rubric."""
+        self._state = State(episode_id=str(uuid4()), step_count=0)
+
+        # Demo rubric (expand to GDPR/CCPA + org constraints later)
+        requirements = [
+            "purpose limitation",
+            "data minimization",
+            "lawful basis",
+            "user consent",
+            "data retention",
+            "access & deletion request",
+            "security safeguards",
+            "third-party sharing disclosure",
+        ]
+        forbidden_phrases = [
+            "we sell your data",
+            "no refunds",
+            "we are not responsible",
+            "indefinitely",
+            "without consent",
+        ]
+        numeric_constraints = {"retention_days_max": 30}
+
+        self._draft = Draft(
+            topic=topic,
+            requirements=requirements,
+            forbidden_phrases=forbidden_phrases,
+            numeric_constraints=numeric_constraints,
+            clauses=[],
+            definitions={},
+        )
+
+        payload = _compute_reward(self._draft)
+        payload["event"] = "reset"
+        payload["episode_id"] = self._state.episode_id
+        payload["step_count"] = self._state.step_count
+        return payload
+
+    def _get_state(self) -> dict:
+        """Return current draft + audit + reward breakdown."""
+        if self._draft is None:
+            return {"error": "Call reset_episode first."}
+        payload = _compute_reward(self._draft)
+        payload["event"] = "state"
+        payload["episode_id"] = self._state.episode_id
+        payload["step_count"] = self._state.step_count
+        return payload
+
+    def _add_clause(self, section: str, text: str) -> dict:
+        """Policy Drafter: add a clause in a section."""
+        if self._draft is None:
+            return {"error": "Call reset_episode first."}
+        cid = f"c_{uuid4().hex[:8]}"
+        self._draft.clauses.append(Clause(id=cid, section=section.strip(), text=text.strip()))
+        self._state.step_count += 1
+        payload = _compute_reward(self._draft)
+        payload["event"] = "add_clause"
+        payload["clause_id"] = cid
+        payload["episode_id"] = self._state.episode_id
+        payload["step_count"] = self._state.step_count
+        return payload
+
+    def _edit_clause(self, clause_id: str, new_text: str) -> dict:
+        """Policy Drafter: edit an existing clause by id."""
+        if self._draft is None:
+            return {"error": "Call reset_episode first."}
+        for c in self._draft.clauses:
+            if c.id == clause_id:
+                c.text = new_text.strip()
+                self._state.step_count += 1
+                payload = _compute_reward(self._draft)
+                payload["event"] = "edit_clause"
+                payload["clause_id"] = clause_id
+                payload["episode_id"] = self._state.episode_id
+                payload["step_count"] = self._state.step_count
+                return payload
+        return {"error": f"Unknown clause_id: {clause_id}"}
+
+    def _delete_clause(self, clause_id: str) -> dict:
+        """Policy Drafter: delete a clause by id."""
+        if self._draft is None:
+            return {"error": "Call reset_episode first."}
+        before = len(self._draft.clauses)
+        self._draft.clauses = [c for c in self._draft.clauses if c.id != clause_id]
+        if len(self._draft.clauses) == before:
+            return {"error": f"Unknown clause_id: {clause_id}"}
+        self._state.step_count += 1
+        payload = _compute_reward(self._draft)
+        payload["event"] = "delete_clause"
+        payload["clause_id"] = clause_id
+        payload["episode_id"] = self._state.episode_id
+        payload["step_count"] = self._state.step_count
+        return payload
+
+    def _add_definition(self, term: str, definition: str) -> dict:
+        """Policy Drafter: add/overwrite a definition."""
+        if self._draft is None:
+            return {"error": "Call reset_episode first."}
+        self._draft.definitions[term.strip()] = definition.strip()
+        self._state.step_count += 1
+        payload = _compute_reward(self._draft)
+        payload["event"] = "add_definition"
+        payload["episode_id"] = self._state.episode_id
+        payload["step_count"] = self._state.step_count
+        return payload
+
+    def _redteam_probe(self, question: str) -> dict:
+        """Red Team: add an adversarial probe (doesn't mutate draft, but scores robustness later)."""
+        if self._draft is None:
+            return {"error": "Call reset_episode first."}
+        # For v1 we simply surface the probe in the audit payload.
+        payload = _compute_reward(self._draft)
+        payload["event"] = "redteam_probe"
+        payload["probe"] = question.strip()
+        payload["episode_id"] = self._state.episode_id
+        payload["step_count"] = self._state.step_count
+        return payload
 
     def reset(
         self,
@@ -269,6 +270,11 @@ class ContractComplianceEnvironment(MCPEnvironment):
         # This env is driven via MCP tools; reset() just returns readiness.
         self._state = State(episode_id=episode_id or str(uuid4()), step_count=0)
         return Observation(done=False, reward=0.0, metadata={"status": "ready"})
+
+    @property
+    def state(self) -> State:
+        """Get the current environment state."""
+        return self._state
 
     def _step_impl(
         self,
