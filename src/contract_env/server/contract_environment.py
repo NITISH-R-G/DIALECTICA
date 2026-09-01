@@ -260,6 +260,11 @@ class ContractComplianceEnvironment(MCPEnvironment):
 
         super().__init__(mcp)
 
+    @property
+    def state(self) -> State:
+        """Get the current environment state."""
+        return self._state
+
     def reset(
         self,
         seed: Optional[int] = None,
