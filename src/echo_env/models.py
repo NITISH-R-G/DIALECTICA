@@ -30,6 +30,9 @@ class EchoAction(Action):
 class EchoObservation(Observation):
     """Observation from the Echo environment - the echoed message."""
 
-    echoed_message: str = Field(..., description="The echoed message from the environment")
-    message_length: int = Field(default=0, ge=0, description="Length of the echoed message")
-
+    echoed_message: str = Field(
+        ..., description="The echoed message from the environment"
+    )
+    message_length: int = Field(
+        default=0, ge=0, description="Length of the echoed message"
+    )
