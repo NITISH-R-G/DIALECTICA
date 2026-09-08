@@ -6,7 +6,6 @@ from typing import Generator
 
 import gradio as gr
 
-
 TOPICS = [
     "AI should be open source",
     "Universal basic income is necessary",
@@ -56,7 +55,9 @@ def _event(
     )
 
 
-def _debate_script(topic: str) -> tuple[list[str], list[str], list[int], list[int], str]:
+def _debate_script(
+    topic: str,
+) -> tuple[list[str], list[str], list[int], list[int], str]:
     # Demo/showcase: always impressive, hardcoded arguments.
     # Default topic gets the "best" lines; others still map to the same script.
     pro = [
@@ -89,9 +90,50 @@ def _debate_script(topic: str) -> tuple[list[str], list[str], list[int], list[in
     return pro, con, pro_delta, con_delta, verdict
 
 
+def _get_topic_config(topic: str, mode: str) -> tuple[str, str]:
+    return topic or DEFAULT_TOPIC, mode or "AI vs AI"
+
+
+def _calculate_scores(
+    current_pro: int,
+    current_con: int,
+    reward_points: list[int],
+    delta: int,
+    is_pro: bool,
+) -> tuple[int, int, int]:
+    if is_pro:
+        current_pro += delta
+        reward_points.append(delta)
+    else:
+        current_con += delta
+        reward_points.append(-delta)
+    return current_pro, current_con, sum(reward_points)
+
+
+def _create_ui_update(  # NOSONAR
+    topic: str, interactive: bool, event_str: str, include_interactive: bool = True
+) -> tuple:
+    empty_update = gr.update(value="")
+    if include_interactive:
+        return (
+            gr.update(value=topic),
+            gr.update(interactive=interactive),
+            empty_update,
+            empty_update,
+            gr.update(interactive=False),
+            gr.update(value=event_str),
+        )
+    return (
+        gr.update(value=topic),
+        gr.update(interactive=interactive),
+        empty_update,
+        empty_update,
+        gr.update(value=event_str),
+    )
+
+
 def start_debate(topic: str, mode: str) -> Generator:
-    topic = topic or DEFAULT_TOPIC
-    mode = mode or "AI vs AI"
+    topic, mode = _get_topic_config(topic, mode)
     pro_lines, con_lines, pro_delta, con_delta, verdict = _debate_script(topic)
 
     pro_score = 0
@@ -101,13 +143,10 @@ def start_debate(topic: str, mode: str) -> Generator:
     rounds_total = 5
 
     # Initial UI reset (canvas drives visuals; Python streams events)
-    yield (
-        gr.update(value=topic),
-        gr.update(interactive=False),
-        gr.update(value=""),
-        gr.update(value=""),
-        gr.update(interactive=False),
-        gr.update(value=_event(
+    yield _create_ui_update(
+        topic,
+        False,
+        _event(
             topic=topic,
             mode=mode,
             round_idx=1,
@@ -120,87 +159,78 @@ def start_debate(topic: str, mode: str) -> Generator:
             speaker="none",
             timer_s=0.0,
             verdict="",
-        )),
+        ),
+        include_interactive=True,
     )
 
     for i in range(rounds_total):
         # PRO speaks
         time.sleep(0.3)
-        pro_score += pro_delta[i]
-        con_score += 0
-        reward_points.append(pro_delta[i] - 0)
-        momentum = sum(reward_points)
-        yield (
-            gr.update(value=topic),
-            gr.update(interactive=False),
-            gr.update(value=""),
-            gr.update(value=""),
-            gr.update(
-                value=_event(
-                    topic=topic,
-                    mode=mode,
-                    round_idx=i + 1,
-                    rounds_total=rounds_total,
-                    pro_line=pro_lines[i],
-                    con_line="",
-                    pro_score=pro_score,
-                    con_score=con_score,
-                    momentum=momentum,
-                    speaker="pro",
-                    timer_s=0.3,
-                )
+        pro_score, con_score, momentum = _calculate_scores(
+            pro_score, con_score, reward_points, pro_delta[i], is_pro=True
+        )
+        yield _create_ui_update(
+            topic,
+            False,
+            _event(
+                topic=topic,
+                mode=mode,
+                round_idx=i + 1,
+                rounds_total=rounds_total,
+                pro_line=pro_lines[i],
+                con_line="",
+                pro_score=pro_score,
+                con_score=con_score,
+                momentum=momentum,
+                speaker="pro",
+                timer_s=0.3,
             ),
+            include_interactive=False,
         )
 
         # CON speaks
         time.sleep(0.3)
-        con_score += con_delta[i]
-        reward_points.append(0 - con_delta[i])
-        momentum = sum(reward_points)
-        yield (
-            gr.update(value=topic),
-            gr.update(interactive=False),
-            gr.update(value=""),
-            gr.update(value=""),
-            gr.update(
-                value=_event(
-                    topic=topic,
-                    mode=mode,
-                    round_idx=i + 1,
-                    rounds_total=rounds_total,
-                    pro_line="",
-                    con_line=con_lines[i],
-                    pro_score=pro_score,
-                    con_score=con_score,
-                    momentum=momentum,
-                    speaker="con",
-                    timer_s=0.3,
-                )
+        pro_score, con_score, momentum = _calculate_scores(
+            pro_score, con_score, reward_points, con_delta[i], is_pro=False
+        )
+        yield _create_ui_update(
+            topic,
+            False,
+            _event(
+                topic=topic,
+                mode=mode,
+                round_idx=i + 1,
+                rounds_total=rounds_total,
+                pro_line="",
+                con_line=con_lines[i],
+                pro_score=pro_score,
+                con_score=con_score,
+                momentum=momentum,
+                speaker="con",
+                timer_s=0.3,
             ),
+            include_interactive=False,
         )
 
     time.sleep(0.3)
-    yield (
-        gr.update(value=topic),
-        gr.update(interactive=True),
-        gr.update(value=""),
-        gr.update(value=""),
-        gr.update(
-            value=_event(
-                topic=topic,
-                mode=mode,
-                round_idx=rounds_total,
-                rounds_total=rounds_total,
-                pro_line="",
-                con_line="",
-                pro_score=pro_score,
-                con_score=con_score,
-                momentum=sum(reward_points),
-                speaker="none",
-                timer_s=0.0,
-                verdict=verdict,
-            )
+    yield _create_ui_update(
+        topic,
+        True,
+        _event(
+            topic=topic,
+            mode=mode,
+            round_idx=rounds_total,
+            rounds_total=rounds_total,
+            pro_line="",
+            con_line="",
+            pro_score=pro_score,
+            con_score=con_score,
+            momentum=sum(reward_points),
+            speaker="none",
+            timer_s=0.0,
+            verdict=verdict,
         ),
+        include_interactive=False,
     )
 
 
@@ -589,7 +619,9 @@ with gr.Blocks(title="DIALECTICA", css=CSS, theme=gr.themes.Base()) as demo:
     gr.HTML(ARENA_HTML, js_on_load=ARENA_JS)
 
     with gr.Row():
-        topic = gr.Dropdown(TOPICS, value=DEFAULT_TOPIC, label="Topic", interactive=True)
+        topic = gr.Dropdown(
+            TOPICS, value=DEFAULT_TOPIC, label="Topic", interactive=True
+        )
         mode = gr.Dropdown(
             ["AI vs AI", "Human vs AI"],
             value="AI vs AI",
@@ -617,4 +649,3 @@ with gr.Blocks(title="DIALECTICA", css=CSS, theme=gr.themes.Base()) as demo:
 
 if __name__ == "__main__":
     demo.launch()
-
