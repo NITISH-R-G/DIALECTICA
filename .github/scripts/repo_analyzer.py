@@ -36,9 +36,8 @@ def analyze_repo(root_dir="."):
             architecture["dependencies"]["python"] = [d for d in deps if d]
 
     # Analyze Python files using AST
-    for subdir, _, files in os.walk(root_dir):
-        if any(ignored in subdir for ignored in [".git", "__pycache__", "venv", ".venv", ".github", "node_modules"]):
-            continue
+    for subdir, dirs, files in os.walk(root_dir):
+        dirs[:] = [d for d in dirs if d not in [".git", "__pycache__", "venv", ".venv", ".github", "node_modules"]]
 
         for file in files:
             if file.endswith(".py"):
