@@ -13,22 +13,31 @@
     ]
   },
   "modules": {
-    "server.py": {
-      "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "echo_env.server.app"
-      ],
-      "functions": [],
-      "classes": []
-    },
     "models.py": {
       "imports": [
         "__future__",
         "os",
         "sys",
         "echo_env.models"
+      ],
+      "functions": [],
+      "classes": []
+    },
+    "sitecustomize.py": {
+      "imports": [
+        "__future__",
+        "os",
+        "sys"
+      ],
+      "functions": [],
+      "classes": []
+    },
+    "server.py": {
+      "imports": [
+        "__future__",
+        "os",
+        "sys",
+        "echo_env.server.app"
       ],
       "functions": [],
       "classes": []
@@ -48,54 +57,60 @@
       ],
       "classes": []
     },
-    "sitecustomize.py": {
-      "imports": [
-        "__future__",
-        "os",
-        "sys"
-      ],
+    "src/contract_env/__init__.py": {
+      "imports": [],
       "functions": [],
       "classes": []
     },
-    "server/echo_environment.py": {
+    "src/contract_env/server/app.py": {
       "imports": [
         "__future__",
-        "os",
-        "sys",
-        "echo_env.server.echo_environment"
+        "contract_environment",
+        "openenv.core.env_server.http_server",
+        "openenv.core.env_server.mcp_types",
+        "uvicorn",
+        "openenv.core.env_server.http_server",
+        "openenv.core.env_server.mcp_types"
       ],
-      "functions": [],
+      "functions": [
+        "main"
+      ],
       "classes": []
     },
-    "server/contract_app.py": {
+    "src/contract_env/server/contract_environment.py": {
       "imports": [
         "__future__",
-        "os",
-        "sys",
-        "contract_env.server.app"
+        "dataclasses",
+        "typing",
+        "uuid",
+        "fastmcp",
+        "openenv.core.env_server.mcp_environment",
+        "openenv.core.env_server.types",
+        "openenv.core.env_server.mcp_environment",
+        "openenv.core.env_server.types"
       ],
-      "functions": [],
-      "classes": []
-    },
-    "server/app.py": {
-      "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "echo_env.server.app"
+      "functions": [
+        "_contains_any",
+        "_coverage_score",
+        "_contradiction_checks",
+        "_compute_reward",
+        "to_markdown",
+        "__init__",
+        "reset",
+        "_step_impl",
+        "reset_episode",
+        "get_state",
+        "add_clause",
+        "edit_clause",
+        "delete_clause",
+        "add_definition",
+        "redteam_probe"
       ],
-      "functions": [],
-      "classes": []
-    },
-    "server/__init__.py": {
-      "imports": [
-        "__future__",
-        "os",
-        "sys",
-        "echo_env.server.echo_environment"
-      ],
-      "functions": [],
-      "classes": []
+      "classes": [
+        "Clause",
+        "Draft",
+        "ContractComplianceEnvironment"
+      ]
     },
     "src/echo_env/models.py": {
       "imports": [
@@ -161,69 +176,54 @@
       "functions": [],
       "classes": []
     },
-    "src/contract_env/__init__.py": {
-      "imports": [],
+    "server/contract_app.py": {
+      "imports": [
+        "__future__",
+        "os",
+        "sys",
+        "contract_env.server.app"
+      ],
       "functions": [],
       "classes": []
     },
-    "src/contract_env/server/app.py": {
+    "server/echo_environment.py": {
       "imports": [
         "__future__",
-        "contract_environment",
-        "openenv.core.env_server.http_server",
-        "openenv.core.env_server.mcp_types",
-        "uvicorn",
-        "openenv.core.env_server.http_server",
-        "openenv.core.env_server.mcp_types"
+        "os",
+        "sys",
+        "echo_env.server.echo_environment"
       ],
-      "functions": [
-        "main"
-      ],
+      "functions": [],
       "classes": []
     },
-    "src/contract_env/server/contract_environment.py": {
+    "server/app.py": {
       "imports": [
         "__future__",
-        "dataclasses",
-        "typing",
-        "uuid",
-        "fastmcp",
-        "openenv.core.env_server.mcp_environment",
-        "openenv.core.env_server.types",
-        "openenv.core.env_server.mcp_environment",
-        "openenv.core.env_server.types"
+        "os",
+        "sys",
+        "echo_env.server.app"
       ],
-      "functions": [
-        "_contains_any",
-        "_coverage_score",
-        "_contradiction_checks",
-        "_compute_reward",
-        "to_markdown",
-        "__init__",
-        "reset",
-        "_step_impl",
-        "reset_episode",
-        "get_state",
-        "add_clause",
-        "edit_clause",
-        "delete_clause",
-        "add_definition",
-        "redteam_probe"
+      "functions": [],
+      "classes": []
+    },
+    "server/__init__.py": {
+      "imports": [
+        "__future__",
+        "os",
+        "sys",
+        "echo_env.server.echo_environment"
       ],
-      "classes": [
-        "Clause",
-        "Draft",
-        "ContractComplianceEnvironment"
-      ]
+      "functions": [],
+      "classes": []
     }
   },
   "entrypoints": [
     "server.py",
     "app.py",
-    "server/contract_app.py",
-    "server/app.py",
+    "src/contract_env/server/app.py",
     "src/echo_env/server/app.py",
-    "src/contract_env/server/app.py"
+    "server/contract_app.py",
+    "server/app.py"
   ],
   "env_vars": []
 }
